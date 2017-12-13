@@ -37,7 +37,7 @@ defmodule Bank.Server do
     }
   end
 
-  def start_link do
+  def start_link(_args) do
     Task.start_link(fn -> loop(%State{}) end)
   end
 
