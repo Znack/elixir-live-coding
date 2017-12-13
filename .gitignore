@@ -23,7 +23,7 @@ erl_crash.dump
 live_coding-*.tar
 
 # Ignore IDE files
-.vsode
+.vscode
 .history
 .idea
 *.beam

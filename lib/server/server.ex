@@ -1,53 +1,25 @@
 defmodule Bank.Server do
   require Logger
+  alias Bank.Models.{Account, Transaction}
 
   defmodule State do
-    defmodule AccountingEntry do
-      defstruct amount: 0, date: nil
-
-      @type t :: %AccountingEntry{
-        amount: integer(),
-        date: DateTime.t(),
-      }
-    end
-    defmodule Transaction do
-      defstruct entries: [], comment: ""
-
-      @type t :: %Transaction{
-        entries: [AccountingEntry.t],
-        comment: String.t,
-      }
-    end
-    defmodule Account do
-      defstruct id: -1, name: "", secret: nil, amount: 0, history: []
-
-      @type t :: %Account{
-        id: integer(),
-        secret: reference(),
-        name: String.t(),
-        amount: integer(),
-        history: [AccountingEntry.t],
-      }
-    end
-
     defstruct clients: %{}, history: []
+
     @type t :: %State{
-      clients: %{
-        optional(integer()) => Account.t
-      },
-      history: [Transaction.t()]
-    }
+            clients: %{
+              optional(integer()) => Account.t()
+            },
+            history: [Transaction.t()]
+          }
   end
 
   # Public API
   def create_account(pid, name) do
-    send(pid, {:message, {:create_account, name}, self()})
-    :ok
+    call(pid, {:create_account, name})
   end
 
   def account_request(pid, property) do
-    send(pid, {:message, {:account_request, property}, self()})
-    :ok
+    call(pid, {:account_request, property})
   end
 
   def start_link(_args \\ []) do
@@ -57,43 +29,67 @@ defmodule Bank.Server do
   # Server implementation
   defp loop(%State{} = state) do
     receive do
-      {:stop, reason} -> Logger.warn("Process stopped, reasion is: #{inspect(reason)}")
-      {:message, msg, from} -> msg |> handle_message(state, from) |> loop
-      _ ->
-        Logger.warn("Unexpected message for server, ignoring it...")
+      {:stop, reason} ->
+        Logger.warn("Process stopped, reasion is: #{inspect(reason)}")
+
+      {:message, {req_ref, from_pid}, msg, from} ->
+        case handle_call(msg, state, from) do
+          {:reply, state, resp} ->
+            send(from_pid, {:reply, req_ref, from_pid, resp})
+            loop(state)
+          {:noreply, state} -> loop(state)
+        end
+      message ->
+        Logger.warn("Unexpected message for server: #{inspect(message)}, ignoring it...")
         loop(state)
     end
   end
 
-  defp handle_message({:create_account, name}, state = %State{clients: cur_clients}, from) do
-    id = case cur_clients do
-      clients when clients == %{} -> 1
-      clients -> clients |> Map.keys |> Enum.max |> Kernel.+(1)
+  defp call(pid, payload) do
+    current_pid = self()
+    request_ref = make_ref()
+
+    send(pid, {:message, {request_ref, current_pid}, payload, current_pid})
+
+    receive do
+      {:reply, ^request_ref, ^current_pid, response} -> {:ok, response}
     end
-    account = %State.Account{id: id, secret: make_ref(), name: name}
+
+  end
+
+  defp handle_call({:create_account, name}, state = %State{clients: cur_clients}, from) do
+    id =
+      case cur_clients do
+        clients when clients == %{} -> 1
+        clients -> clients |> Map.keys() |> Enum.max() |> Kernel.+(1)
+      end
+
+    account = %Account{id: id, secret: make_ref(), name: name}
 
     send(from, {:account_created, account})
 
-    %State{
-      state |
-      clients: Map.put_new(state.clients, id, account)
+    {
+      :reply,
+      %State{state | clients: Map.put_new(state.clients, id, account)},
+      account
     }
   end
 
-  defp handle_message({:account_request, name}, state = %State{clients: clients}, from) when is_bitstring(name) do
-    send(from, {:account_request, find_client_by_prop(clients, :name, name)})
-    state
+  defp handle_call({:account_request, name}, state = %State{clients: clients}, _from)
+       when is_bitstring(name) do
+    {:reply, state, find_client_by_prop(clients, :name, name)}
   end
 
-  defp handle_message({:account_request, secret}, state = %State{clients: clients}, from) when is_reference(secret) do
-    send(from, {:account_request, find_client_by_prop(clients, :secret, secret)})
-    state
+  defp handle_call({:account_request, secret}, state = %State{clients: clients}, _from)
+       when is_reference(secret) do
+    {:reply, state, find_client_by_prop(clients, :secret, secret)}
   end
 
   def find_client_by_prop(clients, prop, value) do
-    entry = clients
-    |> Map.to_list
-    |> Enum.find(fn {_, client} -> Map.get(client, prop) == value end)
+    entry =
+      clients
+      |> Map.to_list()
+      |> Enum.find(fn {_, client} -> Map.get(client, prop) == value end)
 
     case entry do
       nil -> nil
