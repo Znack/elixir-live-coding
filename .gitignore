@@ -26,3 +26,5 @@ live_coding-*.tar
 .vsode
 .history
 .idea
+*.beam
+.elixir_ls

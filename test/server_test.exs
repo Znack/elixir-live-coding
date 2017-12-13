@@ -2,7 +2,6 @@ defmodule BankServerTest do
   use ExUnit.Case
   doctest Bank
   alias Bank.Server
-  alias Bank.Server.State
   alias Bank.Server.State.{AccountingEntry, Transaction, Account}
 
   describe "start_link" do
@@ -17,14 +16,14 @@ defmodule BankServerTest do
       {:ok, pid} = Server.start_link()
 
       :ok = Server.create_account(pid, "Arkadiy")
-      assert_received {
-        :account_created, %Account{id: 1, name: "Arkadiy", secret: arkadiy_ref, history: []}
-      }, ":account_created expected for Arkadiy but not got"
+      assert_receive {
+        :account_created, %Account{id: 1, name: "Arkadiy", secret: _, history: []}
+      }, 1000, ":account_created expected for Arkadiy but not got"
 
-      {:ok, alesha_account} = Server.create_account(pid, "Alesha")
-      assert_received {
-        :account_created, %Account{id: 2, name: "Alesha", secret: alesha_ref, history: []}
-      }, ":account_created expected for Alesha but not got"
+      :ok = Server.create_account(pid, "Alesha")
+      assert_receive {
+        :account_created, %Account{id: 2, name: "Alesha", secret: _, history: []}
+      }, 1000, ":account_created expected for Alesha but not got"
     end
   end
 
@@ -33,14 +32,17 @@ defmodule BankServerTest do
       {:ok, pid} = Server.start_link()
 
       :ok = Server.create_account(pid, "Arkadiy")
-      assert_received {
+      assert_receive {
         :account_created, %Account{id: 1, name: "Arkadiy", secret: secret, history: []}
-      }, ":account_created expected for Arkadiy but not got"
+      }, 1000, ":account_created expected for Arkadiy but not got"
 
       :ok = Server.account_request(pid, secret)
-      assert_received {
+      assert_receive {
         :account_request, %Account{id: 1, secret: ^secret, name: "Arkadiy", history: []},
-      }, ":accounts expected with all accounts but not got"
+      }, 1000, ":account_request expected with all accounts but not got"
+
+      :ok = Server.account_request(pid, "Non-existent-name")
+      assert_receive {:account_request, nil}, 1000, ":account_request expected with all accounts but not got"
     end
   end
 
