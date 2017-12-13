@@ -7,14 +7,14 @@ defmodule BankServerTest do
 
   describe "start_link" do
     test "return pid of the process" do
-      {:ok, pid} = Server.start_link()
+      {:ok, pid} = Server.start_link([])
       assert is_pid(pid)
       assert Process.info(pid) != nil
     end
   end
   describe "stop" do
     test "exit process on :stop message" do
-      {:ok, pid} = Server.start_link()
+      {:ok, pid} = Server.start_link([])
       ref = Process.monitor(pid)
       {:stop, :normal} = Server.stop(pid)
       assert_receive {:DOWN, ref, :process, pid, :normal}, 10, "DOWN message expected but not got"
@@ -24,7 +24,7 @@ defmodule BankServerTest do
   
   describe "create_account" do
     test "add account for the client to state and return account data" do
-      {:ok, pid} = Server.start_link()
+      {:ok, pid} = Server.start_link([])
 
       :ok = Server.create_account(pid, "Arkadiy")
       assert_received {
@@ -40,7 +40,7 @@ defmodule BankServerTest do
 
   describe "account_request" do
     test "return existed account by secret ref" do
-      {:ok, pid} = Server.start_link()
+      {:ok, pid} = Server.start_link([])
 
       :ok = Server.create_account(pid, "Arkadiy")
       assert_received {
@@ -56,7 +56,7 @@ defmodule BankServerTest do
 
   describe "make_transaction" do
     test "allow to make a deposit" do
-      {:ok, pid} = Server.start_link()
+      {:ok, pid} = Server.start_link([])
 
       :ok = Server.create_account(pid, "Arkadiy")
 
@@ -67,7 +67,7 @@ defmodule BankServerTest do
       assert entry.amount == 30
     end
     test "send 20 from Arkadiy to Alesha" do
-      {:ok, pid} = Server.start_link()
+      {:ok, pid} = Server.start_link([])
 
       :ok = Server.create_account(pid, "Arkadiy")
       :ok = Server.create_account(pid, "Alesha")
