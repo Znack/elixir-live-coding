@@ -69,6 +69,11 @@ defmodule Bank.Server do
     send(pid, {:message, self(), {:make_deposit, id, amount}})
     :ok
   end
+  
+  def send_payment(pid, from: from, to: to, amount: amount) do
+    send(pid, {:message, self(), {:send_payment, from, to, amount}})
+    :ok
+  end
 
   defp loop(state) do
     receive do
@@ -134,6 +139,32 @@ defmodule Bank.Server do
           cash: new_cash
         }
         {{:deposit_succeed, new_account}, new_state}
+    end
+  end
+
+  defp handle_message(
+    {:send_payment, from_id, to_id, amount},
+    state = %{clients: clients}
+  ) do
+    case {Map.has_key?(clients, from_id), Map.has_key?(clients, to_id)} do
+      {true, true} ->
+        now = DateTime.utc_now()
+        from = Map.get(clients, from_id)
+        to = Map.get(clients, to_id)
+        case from.amount - amount > 0 do
+          true -> 
+            new_from = update_account_with_entry(from, now, -amount)
+            new_to = update_account_with_entry(to, now, amount)
+            new_state = %{state |
+              clients: clients
+                |> Map.put(from_id, new_from)
+                |> Map.put(to_id, new_to),
+            }
+            {{:payment_succeed, new_from, new_to}, new_state}
+          false ->
+            {{:deposit_error, :insufficient_amount}, state}
+        end
+      _  -> {{:deposit_error, :account_not_found}, state}
     end
   end
 
