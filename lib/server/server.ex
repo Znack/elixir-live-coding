@@ -1,33 +1,6 @@
 defmodule Bank.Server do
-  
+  alias Bank.Models.{AccountingEntry, Transaction, Account}
   defmodule State do
-    defmodule AccountingEntry do
-      defstruct amount: 0, date: nil
-
-      @type t :: %AccountingEntry{
-        amount: integer(),
-        date: DateTime.t(),
-      }
-    end
-    defmodule Transaction do
-      defstruct entries: [], comment: ""
-
-      @type t :: %Transaction{
-        entries: [AccountingEntry.t],
-        comment: String.t,
-      }
-    end
-    defmodule Account do
-      defstruct id: -1, name: "", secret: nil, amount: 0, history: []
-
-      @type t :: %Account{
-        id: integer(),
-        secret: reference(),
-        name: String.t(),
-        amount: integer(),
-        history: [AccountingEntry.t],
-      }
-    end
     defstruct clients: %{}, history: []
     @type t :: %State{
       clients: %{
@@ -37,11 +10,23 @@ defmodule Bank.Server do
     }
   end
 
-  def start_link do
-    Task.start_link(fn -> loop(%State{}) end)
+  ## Public Owner API
+  def start_link(args) do
   end
 
-  defp loop(state) do
-    
+  def stop(pid) do
+  end
+
+  ## Public Client API
+  def create_account(pid, name) do
+  end
+
+  def account_request(pid, ref) do
+  end
+
+  def make_deposit(pid, to: id, amount: amount) do
+  end
+
+  def send_payment(pid, from: from, to: to, amount: amount) do
   end
 end
