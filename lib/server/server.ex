@@ -10,14 +10,15 @@ defmodule Bank.Server do
       }
     end
     defmodule Transaction do
-      defstruct entries: [], comment: String.t
+      defstruct entries: [], comment: ""
 
       @type t :: %Transaction{
-        entries: [AccountingEntry.t]
+        entries: [AccountingEntry.t],
+        comment: String.t,
       }
     end
     defmodule Account do
-      defstruct id: -1, name: "", amount: 0, history: []
+      defstruct id: -1, name: "", secret: nil, amount: 0, history: []
 
       @type t :: %Account{
         id: integer(),
@@ -27,7 +28,7 @@ defmodule Bank.Server do
         history: [AccountingEntry.t],
       }
     end
-    defstruct clients: %{}, history: [],
+    defstruct clients: %{}, history: []
     @type t :: %State{
       clients: %{
         optional(integer()) => Account.t
