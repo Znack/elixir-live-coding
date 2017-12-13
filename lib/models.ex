@@ -28,4 +28,14 @@ defmodule Bank.Models do
       history: [AccountingEntry.t],
     }
   end
+
+  defmodule Cash do
+    defstruct id: :cash, amount: 0, history: []
+
+    @type t :: %Account{
+      id: :cash,
+      amount: integer(),
+      history: [AccountingEntry.t],
+    }
+  end
 end
