@@ -36,4 +36,12 @@ defmodule Bank.Server do
       history: [Transaction.t()]
     }
   end
+
+  def start_link do
+    Task.start_link(fn -> loop(%State{}) end)
+  end
+
+  defp loop(state) do
+    
+  end
 end
