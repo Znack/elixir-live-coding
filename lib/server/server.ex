@@ -44,6 +44,11 @@ defmodule Bank.Server do
   def stop(pid) do
     send(pid, {:stop, :normal})
   end
+  
+  def create_account(pid, name) do
+    send(pid, {:message, self(), {:create_account, name}})
+    :ok
+  end
 
   defp loop(state) do
     receive do
@@ -51,9 +56,29 @@ defmodule Bank.Server do
         {:stop, :normal}
       {:stop, reason} ->
         exit(reason)
+      {:message, source, message} ->
+        case handle_message(message, state) do
+          {reply, new_state} ->
+            send(source, reply)
+            loop(new_state)
+          new_state -> 
+            loop(new_state)
+        end
       _ ->
         Logger.warn("Receive unexpected message, just ignore it")
         loop(state)
     end
+  end
+
+  def handle_message(
+    {:create_account, name},
+    state = %{clients: clients}
+  ) do
+    id = case Map.keys(clients) do
+      [] -> 1
+      ids -> ids |> Enum.max() |> Kernel.+(1)
+    end
+    account = %State.Account{id: id, name: name, secret: make_ref()}
+    {{:account_created, account}, put_in(state.clients, Map.put(clients, id, account))}
   end
 end

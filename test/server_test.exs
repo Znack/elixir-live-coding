@@ -21,20 +21,20 @@ defmodule BankServerTest do
       assert Process.info(pid) == nil
     end
   end
-  
+
   describe "create_account" do
     test "add account for the client to state and return account data" do
       {:ok, pid} = Server.start_link([])
 
       :ok = Server.create_account(pid, "Arkadiy")
-      assert_received {
+      assert_receive {
         :account_created, %Account{id: 1, name: "Arkadiy", secret: arkadiy_ref, history: []}
-      }, ":account_created expected for Arkadiy but not got"
+      }, 100, ":account_created expected for Arkadiy but not got"
 
-      {:ok, alesha_account} = Server.create_account(pid, "Alesha")
-      assert_received {
+      :ok = Server.create_account(pid, "Alesha")
+      assert_receive {
         :account_created, %Account{id: 2, name: "Alesha", secret: alesha_ref, history: []}
-      }, ":account_created expected for Alesha but not got"
+      }, 100, ":account_created expected for Alesha but not got"
     end
   end
 
