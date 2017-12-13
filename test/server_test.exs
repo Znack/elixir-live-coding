@@ -9,6 +9,16 @@ defmodule BankServerTest do
     test "return pid of the process" do
       {:ok, pid} = Server.start_link()
       assert is_pid(pid)
+      assert Process.info(pid) != nil
+    end
+  end
+  describe "stop" do
+    test "exit process on :stop message" do
+      {:ok, pid} = Server.start_link()
+      ref = Process.monitor(pid)
+      {:stop, :normal} = Server.stop(pid)
+      assert_receive {:DOWN, ref, :process, pid, :normal}, 10, "DOWN message expected but not got"
+      assert Process.info(pid) == nil
     end
   end
   
