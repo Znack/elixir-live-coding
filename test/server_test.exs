@@ -2,8 +2,7 @@ defmodule BankServerTest do
   use ExUnit.Case
   doctest Bank
   alias Bank.Server
-  alias Bank.Server.State
-  alias Bank.Server.State.{AccountingEntry, Transaction, Account}
+  alias Bank.Server.{State, AccountingEntry, Transaction, Account}
 
   describe "start_link" do
     test "return pid of the process" do
@@ -43,29 +42,52 @@ defmodule BankServerTest do
       {:ok, pid} = Server.start_link([])
 
       :ok = Server.create_account(pid, "Arkadiy")
-      assert_received {
+      assert_receive {
         :account_created, %Account{id: 1, name: "Arkadiy", secret: secret, history: []}
-      }, ":account_created expected for Arkadiy but not got"
+      }, 100, ":account_created expected for Arkadiy but not got"
 
       :ok = Server.account_request(pid, secret)
-      assert_received {
+      assert_receive {
         :account_request, %Account{id: 1, secret: ^secret, name: "Arkadiy", history: []},
-      }, ":accounts expected with all accounts but not got"
+      }, 100, ":account_request expected with Arkadiy fresh account but not got"
+    end
+    test "return nil if account doesnt exists" do
+      {:ok, pid} = Server.start_link([])
+
+      :ok = Server.account_request(pid, make_ref())
+      assert_receive {:account_request, nil}, 100, ":accounts expected with all accounts but not got"
     end
   end
 
-  describe "make_transaction" do
+  describe "make_deposit" do
     test "allow to make a deposit" do
       {:ok, pid} = Server.start_link([])
 
       :ok = Server.create_account(pid, "Arkadiy")
+      assert_receive {
+        :account_created, %Account{id: 1, name: "Arkadiy", secret: secret, history: []}
+      }, 100, ":account_created expected for Arkadiy but not got"
 
-      :ok = Server.send_payment(pid, from: :cash, to: 1, amount: 30)
-      assert_received {
-        :deposit_succeed, %Account{id: 1, name: "Arkadiy", secret: _, history: [entry]}
-      }, ":deposit_succeed expected for Arkadiy but not got"
+      :ok = Server.make_deposit(pid, to: 1, amount: 30)
+      :ok = Server.account_request(pid, secret)
+      assert_receive {
+        :deposit_succeed, %Account{id: 1, amount: 30, history: [entry]}
+      }, 100, ":deposit_succeed expected for Arkadiy but not got"
       assert entry.amount == 30
+
+      assert_receive {
+        :account_request, %Account{id: 1, secret: ^secret, amount: 30, name: "Arkadiy", history: [entry]},
+      }, 100, ":account_request expected with Arkadiy updated account but not got"
+
     end
+    test "error if account doesn't exists" do
+      {:ok, pid} = Server.start_link([])
+
+      :ok = Server.make_deposit(pid, to: 1, amount: 30)
+      assert_receive {:deposit_error, :account_not_found}, 100, ":deposit_succeed expected for Arkadiy but not got"
+    end
+  end
+  describe "send_payment" do
     test "send 20 from Arkadiy to Alesha" do
       {:ok, pid} = Server.start_link([])
 
