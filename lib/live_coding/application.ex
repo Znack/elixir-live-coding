@@ -6,10 +6,13 @@ defmodule Bank.Application do
   use Application
 
   def start(_type, _args) do
+    import Supervisor.Spec, warn: false
+    
     # List all child processes to be supervised
     children = [
       # Starts a worker by calling: Bank.Worker.start_link(arg)
       # {Bank.Worker, arg},
+      worker(Bank.Server, [[name: Bank.Server, restart: :transient]]),
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
