@@ -56,23 +56,19 @@ defmodule Bank.Server do
   end
   
   def create_account(pid, name) do
-    send(pid, {:message, self(), {:create_account, name}})
-    :ok
+    call(pid, {:create_account, name})
   end
   
   def account_request(pid, ref) do
-    send(pid, {:message, self(), {:account_request, ref}})
-    :ok
+    call(pid, {:account_request, ref})
   end
   
   def make_deposit(pid, to: id, amount: amount) do
-    send(pid, {:message, self(), {:make_deposit, id, amount}})
-    :ok
+    call(pid, {:make_deposit, id, amount})
   end
   
   def send_payment(pid, from: from, to: to, amount: amount) do
-    send(pid, {:message, self(), {:send_payment, from, to, amount}})
-    :ok
+    call(pid, {:send_payment, from, to, amount})
   end
 
   defp loop(state) do
@@ -81,10 +77,10 @@ defmodule Bank.Server do
         {:stop, :normal}
       {:stop, reason} ->
         exit(reason)
-      {:message, source, message} ->
+      {:message, {ref, source}, message} ->
         case handle_message(message, state) do
-          {reply, new_state} ->
-            send(source, reply)
+          {:reply, reply, new_state} ->
+            send(source, {:reply, ref, reply})
             loop(new_state)
           new_state -> 
             loop(new_state)
@@ -92,6 +88,14 @@ defmodule Bank.Server do
       _ ->
         Logger.warn("Receive unexpected message, just ignore it")
         loop(state)
+    end
+  end
+
+  defp call(pid, message) do
+    ref = make_ref()
+    send(pid, {:message, {ref, self()}, message})
+    receive do
+      {:reply, ^ref, reply} -> reply
     end
   end
 
@@ -104,7 +108,7 @@ defmodule Bank.Server do
       ids -> ids |> Enum.max() |> Kernel.+(1)
     end
     account = %Account{id: id, name: name, secret: make_ref()}
-    {{:account_created, account}, put_in(state.clients, Map.put(clients, id, account))}
+    {:reply, {:ok, account}, put_in(state.clients, Map.put(clients, id, account))}
   end
 
   defp handle_message(
@@ -120,7 +124,7 @@ defmodule Bank.Server do
       other ->
         {:inconsistent_accounts, {:expected, :list_with_one_item}, {:got, other}}
     end
-    {{:account_request, account}, state}
+    {:reply, {:ok, account}, state}
   end
 
   defp handle_message(
@@ -128,7 +132,7 @@ defmodule Bank.Server do
     state = %{cash: cash, clients: clients}
   ) do
     case Map.has_key?(clients, id) do
-      false -> {{:deposit_error, :account_not_found}, state}
+      false -> {:reply, {:deposit_error, :account_not_found}, state}
       true -> 
         now = DateTime.utc_now()
         account = Map.get(clients, id)
@@ -138,7 +142,7 @@ defmodule Bank.Server do
           clients: Map.put(clients, id, new_account),
           cash: new_cash
         }
-        {{:deposit_succeed, new_account}, new_state}
+        {:reply, {:ok, new_account}, new_state}
     end
   end
 
@@ -160,11 +164,11 @@ defmodule Bank.Server do
                 |> Map.put(from_id, new_from)
                 |> Map.put(to_id, new_to),
             }
-            {{:payment_succeed, new_from, new_to}, new_state}
+            {:reply, {:ok, new_from, new_to}, new_state}
           false ->
-            {{:deposit_error, :insufficient_amount}, state}
+            {:reply, {:deposit_error, :insufficient_amount}, state}
         end
-      _  -> {{:deposit_error, :account_not_found}, state}
+      _  -> {:reply, {:deposit_error, :account_not_found}, state}
     end
   end
 
