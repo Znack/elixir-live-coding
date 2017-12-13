@@ -69,7 +69,7 @@ defmodule BankServerTest do
       } = Server.create_account(pid, "Arkadiy")
 
       {:ok, deposit_reply} = Server.make_deposit(pid, to: 1, amount: 30)
-      assert %Account{id: 1, amount: 30, history: [_]} = deposit_reply
+      assert %Account{id: 1, name: "Arkadiy", amount: 30, history: [_]} = deposit_reply
       assert [%AccountingEntry{amount: 30}] = deposit_reply.history
 
       {:ok, arkadiy_account} = Server.account_request(pid, secret)
