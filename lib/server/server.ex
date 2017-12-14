@@ -25,7 +25,7 @@ defmodule Bank.Server do
   def account_request(pid, ref) do
   end
 
-  def make_deposit(pid, to: id, amount: amount) do
+  def make_deposit(pid, to: to, amount: amount) do
   end
 
   def send_payment(pid, from: from, to: to, amount: amount) do

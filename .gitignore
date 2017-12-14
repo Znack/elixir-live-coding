@@ -25,4 +25,5 @@ live_coding-*.tar
 # Ignore IDE files
 .vsode
 .history
+.elixir_ls
 .idea
