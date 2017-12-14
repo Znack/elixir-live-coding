@@ -1,14 +1,13 @@
 defmodule Bank.Server do
   require Logger
-  alias Bank.Models.{AccountingEntry, Transaction, Cash, Account}
+  alias Bank.Models.{AccountingEntry, Cash, Account}
   defmodule State do
     defstruct clients: %{}, cash: %Cash{}, history: []
     @type t :: %State{
       clients: %{
         optional(integer()) => Account.t()
       },
-      cash: Cash.t(),
-      history: [Transaction.t()]
+      cash: Cash.t()
     }
   end
 
